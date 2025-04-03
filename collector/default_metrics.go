@@ -20,15 +20,16 @@ var defaultMetricsToml string
 func (e *Exporter) DefaultMetrics() Metrics {
 	var metricsToScrape Metrics
 	if e.config.DefaultMetricsFile != "" {
-		if _, err := toml.DecodeFile(filepath.Clean(e.config.DefaultMetricsFile), &metricsToScrape); err != nil {
+		if err := loadMetricsConfig(filepath.Clean(e.config.DefaultMetricsFile), &metricsToScrape); err != nil {
 			e.logger.Error(fmt.Sprintf("there was an issue while loading specified default metrics file at: "+e.config.DefaultMetricsFile+", proceeding to run with default metrics."),
 				"error", err)
+		} else {
+			return metricsToScrape
 		}
-		return metricsToScrape
 	}
 
 	if _, err := toml.Decode(defaultMetricsToml, &metricsToScrape); err != nil {
-		e.logger.Error("failed to load default metrics", "error", err)
+		e.logger.Error("failed to load default embedded metrics", "error", err)
 		panic(errors.New("Error while loading " + defaultMetricsToml))
 	}
 	return metricsToScrape

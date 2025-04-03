@@ -67,5 +67,5 @@ type Metric struct {
 
 // Metrics is a container structure for prometheus metrics
 type Metrics struct {
-	Metric []Metric
+	Metric []Metric `yaml:"metrics"`
 }

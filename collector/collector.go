@@ -24,6 +24,7 @@ import (
 	"github.com/godror/godror"
 	"github.com/godror/godror/dsn"
 	"github.com/prometheus/client_golang/prometheus"
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -260,13 +261,13 @@ func (e *Exporter) scrape(ch chan<- prometheus.Metric, tick *time.Time) {
 
 			if len(metric.Request) == 0 {
 				errChan <- errors.New("scrape request not found")
-				e.logger.Error("Error scraping for " + fmt.Sprint(metric.MetricsDesc) + ". Did you forget to define request in your toml file?")
+				e.logger.Error("Error scraping for " + fmt.Sprint(metric.MetricsDesc) + ". Did you forget to define request in your metrics config file?")
 				return
 			}
 
 			if len(metric.MetricsDesc) == 0 {
 				errChan <- errors.New("metricsdesc not found")
-				e.logger.Error("Error scraping for query" + fmt.Sprint(metric.Request) + ". Did you forget to define metricsdesc in your toml file?")
+				e.logger.Error("Error scraping for query" + fmt.Sprint(metric.Request) + ". Did you forget to define metricsdesc in your metrics config file?")
 				return
 			}
 
@@ -460,11 +461,13 @@ func (e *Exporter) reloadMetrics() {
 	if strings.Compare(e.config.CustomMetrics, "") != 0 {
 		for _, _customMetrics := range strings.Split(e.config.CustomMetrics, ",") {
 			metrics := &Metrics{}
-			if _, err := toml.DecodeFile(_customMetrics, metrics); err != nil {
+
+			if err := loadMetricsConfig(_customMetrics, metrics); err != nil {
 				e.logger.Error("failed to load custom metrics", "error", err)
 				panic(errors.New("Error while loading " + _customMetrics))
 			} else {
 				e.logger.Info("Successfully loaded custom metrics from " + _customMetrics)
+				e.logger.Debug(fmt.Sprintf("custom metrics: %w", metrics))
 			}
 			e.metricsToScrape.Metric = append(e.metricsToScrape.Metric, metrics.Metric...)
 		}
@@ -664,4 +667,18 @@ func cleanName(s string) string {
 	s = strings.Replace(s, "*", "", -1)  // Remove asterisks
 	s = strings.ToLower(s)
 	return s
+}
+
+func loadMetricsConfig(metricsFileName string, metrics *Metrics) error {
+	if _, errToml := toml.DecodeFile(metricsFileName, metrics); errToml != nil {
+		yamlBytes, err := os.ReadFile(metricsFileName)
+		if err != nil {
+			return fmt.Errorf("cannot read metrics file %s: %w", metricsFileName, err)
+		}
+		if errYaml := yaml.Unmarshal(yamlBytes, metrics); errYaml != nil {
+			return fmt.Errorf("cannot parse metrics file %s: toml parse error: %w, yaml parse error: %w", metricsFileName, errToml, errYaml)
+		}
+
+	}
+	return nil
 }

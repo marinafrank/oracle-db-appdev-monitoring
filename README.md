@@ -50,7 +50,7 @@ Currently, we plan to address the following key features:
 - Implement the ability to update the configuration dynamically, i.e., without a restart,
 - Implement support for tracing within the database, e.g., using an execution context ID provide by an external caller,
 - Provide additional pre-built Grafana dashboards,
-- Integration with Spring Observability, e.g., Micrometer, and 
+- Integration with Spring Observability, e.g., Micrometer, and
 - Provide additional documentation and samples.
 
 ## Standard metrics
@@ -243,7 +243,7 @@ oracledb_wait_time_system_io 1.62
 oracledb_wait_time_user_io 24.5
 ```
 
-These standard metrics are defined in the file `default-metrics.toml` found in the root directory of this repository. 
+These standard metrics are defined in the file `default-metrics.toml` found in the root directory of this repository.
 
 > **Note:** You can change the interval at which metrics are collected at a per-metric level.  If you find that any of the default metrics are placing too much load on your database instance, you may will too collect that particular metric less often, which can be done by adding the `scrapeinterval` paraemeter to the metric definition.  See the definition of the `top_sql` metric for an example.
 
@@ -379,18 +379,18 @@ docker run -it --rm \
 
 ##### Using a wallet
 
-For a **mTLS connection**, you must first set up the wallet.  If you are using Oracle Autonomous Database with mTLS, for example, you can download the wallet from the Oracle Cloud Infrastructure (OCI) console.  
+For a **mTLS connection**, you must first set up the wallet.  If you are using Oracle Autonomous Database with mTLS, for example, you can download the wallet from the Oracle Cloud Infrastructure (OCI) console.
 
 1. Unzip the wallet into a new directory, e.g., called `wallet`.
 1. Edit the `sqlnet.ora` file and set the `DIRECTORY` to `/wallet`.  This is the path inside the exporter container where you will provide the wallet.
 1. Take a note of the TNS Alias name from the `tnsnames.ora` that will be used to connect to the database, e.g., `devdb_tp`.
 
 To use a **wallet for authentication**, use `orapki` to create a wallet and secretstore.  The `orapki` utility can be found in SQLcl or in full database techstack installations.
-1. Create a wallet, for example: 
+1. Create a wallet, for example:
     ```bash
     orapki wallet create -wallet /wallet -auto_login -pwd <wallet_password>
     ```
-1. Create a secretstore for the database user, specifying the TNS Alias name (`<tns_alias>`) from the `tnsnames.ora` file for example: 
+1. Create a secretstore for the database user, specifying the TNS Alias name (`<tns_alias>`) from the `tnsnames.ora` file for example:
     ```bash
     orapki secretstore create_credential -wallet /wallet -pwd <wallet_password> -connect_string <tns_alias> -username <db_user_name> -password <db_user_password>
     ```
@@ -535,7 +535,7 @@ You may need to update your Prometheus configuration to add a target.  If so, yo
     scrape_interval: 15s
     scrape_timeout: 10s
     static_configs:
-    - targets: 
+    - targets:
       - metrics-exporter.exporter.svc.cluster.local:9161
 ```
 
@@ -558,8 +558,8 @@ Usage of oracledb_exporter:
       --web.telemetry-path="/metrics"
                                  Path under which to expose metrics. (env: TELEMETRY_PATH)
       --default.metrics="default-metrics.toml"
-                                 File with default metrics in a TOML file. (env: DEFAULT_METRICS)
-      --custom.metrics=""        Comma separated list of file(s) that contain various custom metrics in a TOML format. (env: CUSTOM_METRICS)
+                                 File with default metrics in a toml or yaml format. (env: DEFAULT_METRICS)
+      --custom.metrics=""        Comma separated list of file(s) that contain various custom metrics in a toml or yaml format. (env: CUSTOM_METRICS)
       --query.timeout=5          Query timeout (in seconds). (env: QUERY_TIMEOUT)
       --database.maxIdleConns=0  Number of maximum idle connections in the connection pool. (env: DATABASE_MAXIDLECONNS)
       --database.maxOpenConns=10
@@ -589,7 +589,7 @@ You may provide the connection details using these variables:
 - `DB_PASSWORD` is the password for that user, e.g., `Welcome12345`
 - `DB_CONNECT_STRING` is the connection string, e.g., `localhost:1521/freepdb1`
 - `DB_ROLE` (Optional) can be set to `SYSDBA` or `SYSOPER` if you want to connect with one of those roles, however Oracle recommends that you connect with the lowest possible privileges and roles necessary for the exporter to run.
-- `ORACLE_HOME` is the location of the Oracle Instant Client, e.g., `/lib/oracle/21/client64/lib`.  
+- `ORACLE_HOME` is the location of the Oracle Instant Client, e.g., `/lib/oracle/21/client64/lib`.
 - `TNS_ADMIN` is the location of your (unzipped) wallet.  The `DIRECTORY` set in the `sqlnet.ora` file must match the path that it will be mounted on inside the container.
 
 The following example puts the logfile in the current location with the filename `alert.log` and loads the default matrics file (`default-metrics,toml`) from the current location.
@@ -609,11 +609,17 @@ The exporter will read the password from a secret stored in OCI Vault if you set
 
 ## Custom metrics
 
-The exporter allows definition of arbitrary custom metrics in one or more TOML files. To specify this file to the
+The exporter allows definition of arbitrary custom metrics in one or more files. To specify this file to the
 exporter, you can:
 
-- Use `--custom.metrics` flag followed by a comma separated list of TOML files, or
-- Export `CUSTOM_METRICS` variable environment (`export CUSTOM_METRICS=my-custom-metrics.toml,my-other-custom-metrics.toml`)
+- Use `--custom.metrics` flag followed by a comma separated list of files, or
+- Export `CUSTOM_METRICS` variable environment (`export CUSTOM_METRICS=<my-custom-metrics filesystem path>,<my-other-custom-metrics filesystem path>`)
+
+Default metrics can be also overridden in the same way, with  `--default.metrics` / `DEFAULT_METRICS` correspondingly
+
+Both toml and yaml formats are supported for metrics files.
+
+### TOML metrics file format
 
 Custom metrics file must contain a series of `[[metric]]` definitions, in TOML. Each metric definition must follow the custom metric schema:
 
@@ -622,7 +628,7 @@ Custom metrics file must contain a series of `[[metric]]` definitions, in TOML. 
 | context          | Metric context, used to build metric FQN                                                                                                                                                    | String                            | Yes      |                                   |
 | labels           | Metric labels, which must match column names in the query. Any column that is not a label will be parsed as a metric                                                                        | Array of Strings                  | No       |                                   |
 | metricsdesc      | Mapping between field(s) in the request and comment(s)                                                                                                                                      | Dictionary of Strings             | Yes      |                                   |
-| metricstype      | Mapping between field(s) in the request and [Prometheus metric types](https://prometheus.io/docs/concepts/metric_types/)                                                                    | Dictionary of Strings             | No       |                                   |
+| metricstype      | Mapping between field(s) in the request and [Prometheus metric types](https://prometheus.io/docs/concepts/metric_types/)                                                                    | Dictionary of Strings             | No       | Gauge                             |
 | metricsbuckets   | Split [histogram](https://prometheus.io/docs/concepts/metric_types/#histogram) metric types into buckets based on value ([example](./custom-metrics-example/metric-histogram-example.toml)) | Dictionary of String dictionaries | No       |                                   |
 | fieldtoappend    | Field from the request to append to the metric FQN                                                                                                                                          | String                            | No       |                                   |
 | request          | Oracle database query to run for metrics scraping                                                                                                                                           | String                            | Yes      |                                   |
@@ -643,7 +649,7 @@ metricsdesc = { value_1 = "Simple example returning always 1.", value_2 = "Same 
 
 This file produce the following entries in the exporter:
 
-```text
+```conf
 # HELP oracledb_test_value_1 Simple example returning always 1.
 # TYPE oracledb_test_value_1 gauge
 oracledb_test_value_1 1
@@ -669,7 +675,7 @@ metricsdesc = { value_1 = "Simple example returning always 1.", value_2 = "Same 
 
 This TOML file produces the following result:
 
-```text
+```conf
 # HELP oracledb_context_no_label_value_1 Simple example returning always 1.
 # TYPE oracledb_context_no_label_value_1 gauge
 oracledb_context_no_label_value_1 1
@@ -698,7 +704,7 @@ metricstype = { value_1 = "counter" }
 
 This TOML file will produce the following result:
 
-```text
+```conf
 # HELP oracledb_test_value_1 Simple test example returning always 1 as counter.
 # TYPE oracledb_test_value_1 counter
 oracledb_test_value_1 1
@@ -707,8 +713,58 @@ oracledb_test_value_1 1
 oracledb_test_value_2 2
 ```
 
-You can find [working examples](./custom-metrics-example/custom-metrics.toml) of custom metrics for slow queries, big queries and top 100 tables.
-An exmaple of [custom metrics for Transacational Event Queues](./custom-metrics-example/txeventq-metrics.toml) is also provided.
+### YAML metrics file format
+
+yaml format has the same field naming, semantic and defaults as for [TOML definition](#toml-metrics-file-format), but needs the root element `metrics`:
+
+```yaml
+metrics:
+- context: "context_no_label"
+  metricsdesc:
+    value_1: "Simple example returning always 1 as counter."
+    value_2: "Same but returning always 2 as gauge."
+  request: "SELECT
+    1 as value_1, 2 as value_2
+    FROM DUAL"
+  metricstype:
+    value_1: "counter"
+
+- context: "context_with_labels"
+  labels: [label_1,label_2]
+  metricsdesc:
+    value_1: "Simple example returning always 1 as a gauge."
+    value_2: "Same but returning always 2 as counter."
+  request: |
+    SELECT 'First label' label_1
+    , 'Second label'     label_2
+    , 1                  value_1
+    , 2                  value_2
+    FROM dual
+  metricstype:
+    value_2: "counter"
+```
+
+This yaml file will produce the following result:
+
+```conf
+# HELP oracledb_context_no_label_value_1 Simple example returning always 1 as counter.
+# TYPE oracledb_context_no_label_value_1 counter
+oracledb_context_no_label_value_1 1
+# HELP oracledb_context_no_label_value_2 Same but returning always 2 as gauge.
+# TYPE oracledb_context_no_label_value_2 gauge
+oracledb_context_no_label_value_2 2
+# HELP oracledb_context_with_labels_value_1 Simple example returning always 1 as a gauge.
+# TYPE oracledb_context_with_labels_value_1 gauge
+oracledb_context_with_labels_value_1{label_1="First label",label_2="Second label"} 1
+# HELP oracledb_context_with_labels_value_2 Same but returning always 2 as counter.
+# TYPE oracledb_context_with_labels_value_2 counter
+oracledb_context_with_labels_value_2{label_1="First label",label_2="Second label"} 2
+```
+
+Make also sure `request` SQL is not terminated by semicolon `;`
+
+You can find [working examples](./custom-metrics-example) of various custom metrics e.g. for slow queries, big queries and top 100 tables.\
+An example of [custom metrics for Transactional Event Queues](./custom-metrics-example/txeventq-metrics.toml) is also provided.
 
 ### Customize metrics in a container image
 
